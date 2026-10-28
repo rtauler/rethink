@@ -8,6 +8,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -39,8 +40,17 @@ def api(path, payload=None):
 
 
 def check():
-    subprocess.run(["docker", "exec", "app_" + NEW, "node", "dist/tools/check-local-drivers.js"],
-                   check=True, timeout=190)
+    # Supervisor reports start before the application's listener is ready.
+    for attempt in range(30):
+        result = subprocess.run([
+            "docker", "exec", "app_" + NEW, "node", "dist/tools/check-local-drivers.js",
+        ], capture_output=True, text=True, timeout=190)
+        if result.returncode == 0:
+            print(result.stdout, end="", flush=True)
+            return
+        if "ECONNREFUSED" not in result.stderr or attempt == 29:
+            raise RuntimeError("Device health check failed: " + result.stderr)
+        time.sleep(2)
 
 
 def main():
@@ -56,16 +66,25 @@ def main():
     manifest = (source / "config.yaml").read_text()
     version = re.search(r"^version: ['\"]?([^'\"\n]+)", manifest, re.M).group(1)
     installed = {item["slug"] for item in api("/addons")["addons"]}
-    initial = NEW not in installed
-    previous = api(f"/addons/{OLD if initial else NEW}/info")
-    if not initial and previous["version"] == version:
+    stock = api(f"/addons/{OLD}/info")
+    custom = api(f"/addons/{NEW}/info") if NEW in installed else None
+    initial = custom is None or (stock["state"] == "started" and custom["state"] != "started")
+    previous = stock if initial else custom
+    same_version = custom is not None and custom["version"] == version
+    if same_version:
+        # Supervisor removes stopped containers, so inspect the retained image.
+        arch = subprocess.check_output(["uname", "-m"], text=True).strip()
+        arch = {"x86_64": "amd64", "aarch64": "aarch64", "armv7l": "armv7"}[arch]
         actual = subprocess.check_output([
-            "docker", "inspect", "app_" + NEW, "--format",
+            "docker", "image", "inspect", f"local/{arch}-addon-rethink_drivers:{version}", "--format",
             '{{index .Config.Labels "org.opencontainers.image.revision"}}',
         ], text=True).strip()
         if actual != revision:
             sys.exit("This version already identifies a different revision; increment ha-addon/config.yaml")
+    if same_version and not initial:
         print(f"{NEW} already runs {version}; checking health", flush=True)
+        if custom["state"] != "started":
+            api(f"/addons/{NEW}/start", {})
         check()
         return
 
@@ -92,7 +111,10 @@ def main():
     switched = False
     try:
         if initial:
-            api(f"/store/addons/{NEW}/install", {"background": False})
+            if custom is None:
+                api(f"/store/addons/{NEW}/install", {"background": False})
+            elif not same_version:
+                api(f"/store/addons/{NEW}/update", {"background": False, "backup": True})
             api(f"/addons/{NEW}/options", {
                 "options": previous["options"], "network": previous["network"],
                 "auto_update": False, "boot": "manual", "ingress_panel": True,
@@ -126,6 +148,17 @@ def main():
                 api(f"/addons/{NEW}/stop", {})
                 api(f"/addons/{OLD}/options", {"boot": "auto", "auto_update": False})
                 api(f"/addons/{OLD}/start", {})
+                # Starting through Supervisor recreates the stock container too.
+                for model in ("fridge", "washer"):
+                    subprocess.run([
+                        "docker", "exec", "app_" + OLD, "node",
+                        f"/app/data/rethink-{model}-patch/install.mjs",
+                    ], check=True)
+                subprocess.run([
+                    "docker", "exec", "app_" + OLD, "node",
+                    "/app/data/rethink-washer-patch/smoke-test.mjs",
+                ], check=True)
+                subprocess.run(["docker", "restart", "app_" + OLD], check=True)
             except Exception as error:
                 print(f"Rollback needs attention: {error}", file=sys.stderr)
         elif not initial:

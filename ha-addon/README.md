@@ -70,10 +70,19 @@ restore the app backup created before that update. The previous packaged source
 is also saved as `source/` in the deployment backup, and previous releases remain
 under `/home/rtauler/rethink-builds/` for rebuilding.
 
-To return to the stock app immediately, stop Rethink Local Drivers in HA, disable
-its automatic startup, then start the original Rethink app and enable its startup.
-Its original pairing data and the working 0.1.3 driver patch are preserved. Its
-automatic updates must remain disabled while it relies on those patches.
+To return to the stock app, stop Rethink Local Drivers in HA, disable its automatic
+startup, then start the original Rethink app and enable its startup. Its pairing
+data is preserved. Supervisor recreates stopped containers, so reapply both saved
+driver installers and restart the stock container with Docker before relying on
+its entities. The migration script performs that recovery automatically on a
+failed initial migration. Keep the stock app's automatic updates disabled.
+
+```sh
+sudo docker exec app_e75b1f28_rethink node /app/data/rethink-fridge-patch/install.mjs
+sudo docker exec app_e75b1f28_rethink node /app/data/rethink-washer-patch/install.mjs
+sudo docker exec app_e75b1f28_rethink node /app/data/rethink-washer-patch/smoke-test.mjs
+sudo docker restart app_e75b1f28_rethink
+```
 
 The legacy `washer-driver/` and `fridge-driver/` patch copies in the parent project
 are recovery artifacts. Make future production driver changes in this repository's
