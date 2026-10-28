@@ -10,11 +10,15 @@ RUN npm ci --ignore-scripts
 COPY . .
 # .git is not part of the build context, so the revision has to be passed in
 ARG GIT_REVISION
-RUN npm run build && npm prune --omit=dev
+RUN npm run check && npm test && npm run build && npm prune --omit=dev
 
 # Production stage
 FROM alpine:3.24 AS runtime
 WORKDIR /app
+
+ARG GIT_REVISION
+LABEL org.opencontainers.image.source="https://github.com/rtauler/rethink" \
+      org.opencontainers.image.revision="${GIT_REVISION}"
 
 RUN apk upgrade --no-cache \
 	&& apk add --no-cache nodejs ca-certificates \

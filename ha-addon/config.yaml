@@ -1,0 +1,66 @@
+name: Rethink Local Drivers
+version: '0.1.3-rtauler.1'
+slug: rethink_drivers
+description: Local Rethink build with the GBBSJ11ESW fridge and W4X1085NWH washer drivers.
+url: https://github.com/rtauler/rethink
+arch:
+    - aarch64
+    - amd64
+    - armv7
+init: true
+environment:
+    RETHINK_HASSIO_OPTIONS: /data/options.json
+    RETHINK_DATA_DIR: /app/data
+startup: application
+boot: manual
+hassio_api: true
+services:
+    - mqtt:want
+ingress: true
+ingress_port: 44401
+panel_icon: mdi:home-automation
+panel_title: Rethink Local Drivers
+ports:
+    443/tcp: 443
+    8883/tcp: 8883
+    46030/tcp: 46030
+    47878/tcp: 47878
+options:
+    hostname: rethink.lan
+    discovery_prefix: homeassistant
+    rethink_prefix: rethink
+    mqtt_url: ''
+    mqtt_user: ''
+    mqtt_pass: ''
+    https_advertise: ''
+    mqtts_advertise: ''
+    custom_root_cert_file: ''
+    config_file: ''
+    bridge_dns:
+        - https://1.1.1.1/dns-query
+        - https://8.8.8.8/dns-query
+    log:
+        - status
+        - incoming
+        - HTTPS
+        - publish
+        - MGMT
+schema:
+    hostname: str
+    discovery_prefix: str
+    rethink_prefix: str
+    mqtt_url: str?
+    mqtt_user: str?
+    mqtt_pass: password?
+    https_advertise: str?
+    mqtts_advertise: str?
+    custom_root_cert_file: str?
+    config_file: str?
+    bridge_dns:
+        - str?
+    log:
+        - str
+map:
+    - type: addon_config
+      read_only: false
+      path: /app/data

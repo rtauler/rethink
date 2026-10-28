@@ -4,6 +4,7 @@ on:
     push:
         branches:
             - master
+            - codex/local-drivers-deploy
     pull_request:
 
 permissions:
