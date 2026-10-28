@@ -8,6 +8,8 @@ import re
 import shutil
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 
 OLD = "e75b1f28_rethink"
 NEW = "local_rethink_drivers"
@@ -16,14 +18,21 @@ TARGET = BASE / "apps/local/rethink_drivers"
 
 
 def api(path, payload=None):
-    # Use the already privileged HA CLI session, keeping its token inside its container.
-    command = ["docker", "exec", "-i", "hassio_cli", "sh", "-c",
-               'curl -sS --max-time 1800 -H "Authorization: Bearer $SUPERVISOR_TOKEN" '
-               '-H "Content-Type: application/json" -X "$1" --data-binary @- '
-               '"http://supervisor$2"', "sh", "GET" if payload is None else "POST", path]
-    result = subprocess.run(command, input="" if payload is None else json.dumps(payload),
-                            text=True, capture_output=True, check=True, timeout=1810)
-    response = json.loads(result.stdout)
+    # Read the already privileged CLI token into memory only. A store refresh can
+    # restart the CLI container; the long build request must survive that restart.
+    info = json.loads(subprocess.check_output(["docker", "inspect", "hassio_cli"]))[0]
+    token = next(item.split("=", 1)[1] for item in info["Config"]["Env"]
+                 if item.startswith("SUPERVISOR_TOKEN="))
+    request = urllib.request.Request(
+        "http://172.30.32.2" + path,
+        data=None if payload is None else json.dumps(payload).encode(),
+        headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=1800) as result:
+            response = json.load(result)
+    except urllib.error.HTTPError as error:
+        response = json.load(error)
     if response.get("result") != "ok":
         raise RuntimeError(f"Supervisor rejected {path}: {response.get('message', 'unknown error')}")
     return response.get("data") or {}

@@ -10,7 +10,7 @@ release="$version-$(git rev-parse --short=12 HEAD)"
 staging=$(mktemp -d)
 trap 'rm -rf "$staging"' EXIT HUP INT TERM
 sh scripts/package-ha-addon.sh "$staging/source"
-tar -czf "$staging/source.tar.gz" -C "$staging/source" .
+COPYFILE_DISABLE=1 tar --no-xattrs -czf "$staging/source.tar.gz" -C "$staging/source" .
 ssh "$host" "mkdir -p 'rethink-builds/$release'"
 scp "$staging/source.tar.gz" "$host:rethink-builds/$release/source.tar.gz"
 ssh "$host" "mkdir -p 'rethink-builds/$release/source' && tar -xzf 'rethink-builds/$release/source.tar.gz' -C 'rethink-builds/$release/source'"

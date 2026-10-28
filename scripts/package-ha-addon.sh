@@ -19,7 +19,8 @@ revision=$(git rev-parse HEAD)
 mkdir -p "$1"
 output=$(cd "$1" && pwd)
 git archive HEAD | tar -xf - -C "$output"
-cp "$output/ha-addon/config.yaml" "$output/config.yaml"
+# Supervisor scans subdirectories too; keep exactly one app manifest in the package.
+mv "$output/ha-addon/config.yaml" "$output/config.yaml"
 printf 'args:\n    GIT_REVISION: "%s"\n' "$revision" > "$output/build.yaml"
 printf '%s\n' "$revision" > "$output/SOURCE_REVISION"
 printf 'Packaged %s at %s\n' "$revision" "$output"
