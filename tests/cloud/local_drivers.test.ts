@@ -27,6 +27,13 @@ test('production registry maps both local models and decodes physical captures',
         course: 'Mix',
         temp: '20 °C',
         spin: '1000 rpm',
+        drying: 'Off',
+        remaining_time: 70,
+        initial_time: 76,
+        reserve_time: 0,
+        remote_start: 'ON',
+        door_lock: 'OFF',
+        child_lock: 'OFF',
     })
     fridge.emit(
         'data',

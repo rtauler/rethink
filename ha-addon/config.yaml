@@ -1,5 +1,5 @@
 name: Rethink Local Drivers
-version: '0.1.3-rtauler.3'
+version: '0.1.3-rtauler.4'
 slug: rethink_drivers
 description: Local Rethink build with the GBBSJ11ESW fridge and W4X1085NWH washer drivers.
 url: https://github.com/rtauler/rethink
