@@ -35,5 +35,12 @@ test('production registry maps both local models and decodes physical captures',
             'hex',
         ),
     )
-    assert.deepEqual(ha.devices.fridge.properties, { fridge_setpoint: 3, freezer_setpoint: -18, door: 'OFF' })
+    assert.deepEqual(ha.devices.fridge.properties, {
+        fridge_setpoint: 3,
+        freezer_setpoint: -18,
+        door: 'OFF',
+        super_cool: 'OFF',
+        express_freeze: 'OFF',
+        vacation: 'OFF',
+    })
 })
