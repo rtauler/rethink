@@ -134,7 +134,8 @@ export default class Device extends AABBDevice {
         if (!this.celsius) return
         const fields: Record<number, number> = {}
         if (prop === 'fridge_setpoint' || prop === 'freezer_setpoint') {
-            if (!/^-?\d+$/.test(mqttValue)) return
+            // HA's number platform can serialize an integer setpoint as "4.0".
+            if (!/^-?\d+(?:\.\d+)?$/.test(mqttValue)) return
             const value = Number(mqttValue)
             const range = prop === 'fridge_setpoint' ? fridgeRange('C') : freezerRange('C')
             if (!Number.isInteger(value) || value < range.min || value > range.max) return

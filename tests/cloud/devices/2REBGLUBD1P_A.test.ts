@@ -95,6 +95,15 @@ test('all five controls reproduce physically verified commands and decode applia
         dev.setProperty(command.property, command.value)
         assert.equal(thinq.outbox.length, 1)
         assert.equal(thinq.outbox[0].toString('hex'), command.tx, `${command.property}=${command.value}`)
+        if (command.property.endsWith('_setpoint')) {
+            thinq.resetRecorder()
+            dev.setProperty(command.property, command.value + '.0')
+            assert.equal(
+                thinq.outbox[0].toString('hex'),
+                command.tx,
+                'HA float serialization keeps the same wire setpoint',
+            )
+        }
         thinq.emit('data', Buffer.from(command.rx, 'hex'))
         assert.equal(
             ha.devices.fridge.properties[command.property],
